@@ -20,8 +20,12 @@ def ICM(graph: networkx.Graph, patients_0: List, iterations: int) -> [Set, Set]:
 
 
 def plot_degree_histogram(histogram: Dict):
-    # TODO implement your code here
-    ...
+    histogram = dict(sorted(histogram.items()))
+    # plt.figure(figsize=(20, 20))
+    plt.bar(range(len(histogram)), list(histogram.values()), align='center')
+    plt.xticks(range(len(histogram)), list(histogram.keys()))
+    plt.show()
+    print("hi")
 
 
 def calc_degree_histogram(graph: networkx.Graph) -> Dict:
@@ -30,13 +34,22 @@ def calc_degree_histogram(graph: networkx.Graph) -> Dict:
     if histogram[1] = 10 -> 10 nodes have only 1 friend
     """
     histogram = {}
+
+    for node in graph.degree:
+        if node[1] in histogram:
+            histogram[node[1]] += 1
+        else:
+            histogram[node[1]] = 1
     # TODO implement your code here
     return histogram
 
 
 def build_graph(filename: str) -> networkx.Graph:
-    G = networkx.Graph()
-    # TODO implement your code here
+    Data = open(filename, "r")
+    next(Data, None)  # skip the first line in the input file
+    Graphtype = networkx.Graph()
+    G = networkx.parse_edgelist(Data, delimiter=',', create_using=Graphtype,
+                                nodetype=int, data=(('w', float),))
     return G
 
 
@@ -86,8 +99,12 @@ def choose_who_to_vaccinate_example(graph: networkx.Graph) -> List:
 CONTAGION = 1
 LETHALITY = .15
 
-if __name__ == "__main__":
-    filename = ""
+
+def show_data(filename: str) -> networkx.Graph:
     G = build_graph(filename=filename)
+    hist = calc_degree_histogram(G)
+    plot_degree_histogram(hist)
 
 
+if __name__ == "__main__":
+    show_data("PartB-C.csv")
