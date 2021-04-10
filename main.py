@@ -23,9 +23,8 @@ def plot_degree_histogram(histogram: Dict):
     histogram = dict(sorted(histogram.items()))
     # plt.figure(figsize=(20, 20))
     plt.bar(range(len(histogram)), list(histogram.values()), align='center')
-    plt.xticks(range(len(histogram)), list(histogram.keys()))
+    # plt.xticks(range(len(histogram)), list(histogram.keys()))
     plt.show()
-    print("hi")
 
 
 def calc_degree_histogram(graph: networkx.Graph) -> Dict:
@@ -54,8 +53,13 @@ def build_graph(filename: str) -> networkx.Graph:
 
 
 def clustering_coefficient(graph: networkx.Graph) -> float:
-    # TODO implement your code here
-    ...
+    denominator = 0
+    for value in graph.adj.values():
+        denominator += comb(len(value), 2)
+    tri_dict = networkx.triangles(graph)
+    numerator = 3* sum(tri_dict.values())/3
+    cc = numerator / denominator
+    print(cc)
     return cc
 
 
@@ -100,11 +104,21 @@ CONTAGION = 1
 LETHALITY = .15
 
 
+def comb(n, k):
+    if n < k:
+        return 0
+    return int((np.lib.math.factorial(n) / (np.lib.math.factorial(k) * np.lib.math.factorial(n - k))))
+
+
 def show_data(filename: str) -> networkx.Graph:
     G = build_graph(filename=filename)
     hist = calc_degree_histogram(G)
     plot_degree_histogram(hist)
+    clustering_coefficient(G)
 
 
 if __name__ == "__main__":
-    show_data("PartB-C.csv")
+    print("A1:")
+    show_data("PartA1.csv")
+    print("A2:")
+    show_data("PartA2.csv")
