@@ -8,7 +8,38 @@ import copy
 
 def LTM(graph: networkx.Graph, patients_0: List, iterations: int) -> Set:
     total_infected = set(patients_0)
-    # TODO implement your code here
+    not_infected = set()
+    #  STEP of Concern Update
+    for v in G.adj.items():
+        sick_neighbors_count = 0
+        for neighbor in v[1]:
+            if neighbor in total_infected:
+                sick_neighbors_count += 1
+        G.nodes[v[0]]['concern'] = sick_neighbors_count / graph.degree[v[0]]
+    # --------------------------------------------------------------------------
+    for i in range(iterations):
+        # Step of New Infected
+        for v in G.adj.items():
+            edges_w_sum = 0
+            for neighbor in v[1]:
+                if neighbor in total_infected:
+                    edges_w_sum += G.get_edge_data(v[0], neighbor, default=0)['w']
+            if CONTAGION * edges_w_sum >= 1 + G.nodes[v[0]]['concern']:
+                total_infected.add(v[0])
+        # --------------------------------------------
+        #         Update S
+        not_infected = set(G.nodes).difference(total_infected)
+        # --------------------------------------------
+        # UPDATE CONCERN******************************
+        for v in G.adj.items():
+            if v[0] in not_infected:
+                sick_neighbors_count = 0
+                for neighbor in v[1]:
+                    if neighbor in total_infected:
+                        sick_neighbors_count += 1
+                G.nodes[v[0]]['concern'] = sick_neighbors_count / graph.degree[v[0]]
+    # ------------------------------------------------------------------
+    print(total_infected)
     return total_infected
 
 
@@ -57,7 +88,7 @@ def clustering_coefficient(graph: networkx.Graph) -> float:
     for value in graph.adj.values():
         denominator += comb(len(value), 2)
     tri_dict = networkx.triangles(graph)
-    numerator = 3* sum(tri_dict.values())/3
+    numerator = 3 * sum(tri_dict.values()) / 3
     cc = numerator / denominator
     print(cc)
     return cc
@@ -118,7 +149,11 @@ def show_data(filename: str) -> networkx.Graph:
 
 
 if __name__ == "__main__":
-    print("A1:")
-    show_data("PartA1.csv")
-    print("A2:")
-    show_data("PartA2.csv")
+    # print("A1:")
+    # show_data("PartA1.csv")
+    # print("A2:")
+    # show_data("PartA2.csv")
+    G = build_graph("PartB-C.csv")
+    l1 = [14270, 12029, 1, 25564]
+    T = 2
+    LTM(G, l1, T)
