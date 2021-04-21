@@ -8,37 +8,32 @@ import copy
 
 def LTM(graph: networkx.Graph, patients_0: List, iterations: int) -> Set:
     total_infected = set(patients_0)
-    not_infected = set()
+    not_infected = set(graph.nodes).difference(total_infected)
     #  STEP of Concern Update
-    for v in G.adj.items():
-        G.nodes[v[0]]['concern'] = 0
-        # sick_neighbors_count = 0
-        # for neighbor in v[1]:
-        #     if neighbor in total_infected:
-        #         sick_neighbors_count += 1
-        # G.nodes[v[0]]['concern'] = sick_neighbors_count / graph.degree[v[0]]
+    for v in graph.nodes:
+        graph.nodes[v]['concern'] = 0
     # --------------------------------------------------------------------------
     for i in range(iterations):
         # Step of New Infected
-        for v in G.adj.items():
+        for v in not_infected:
             edges_w_sum = 0
-            for neighbor in v[1]:
+            for neighbor in graph[v]:
                 if neighbor in total_infected:
-                    edges_w_sum += G.get_edge_data(v[0], neighbor, default=0)['w']
-            if CONTAGION * edges_w_sum >= 1 + G.nodes[v[0]]['concern']:
-                total_infected.add(v[0])
+                    edges_w_sum += graph.get_edge_data(v, neighbor, default=0)['w']
+            if CONTAGION * edges_w_sum >= 1 + graph.nodes[v]['concern']:
+                total_infected.add(v)
+                not_infected.remove(v)
         # --------------------------------------------
         #         Update S
-        not_infected = set(G.nodes).difference(total_infected)
+        # not_infected = set(graph.nodes).difference(total_infected)
         # --------------------------------------------
         # UPDATE CONCERN******************************
-        for v in G.adj.items():
-            if v[0] in not_infected:
-                sick_neighbors_count = 0
-                for neighbor in v[1]:
-                    if neighbor in total_infected:
-                        sick_neighbors_count += 1
-                G.nodes[v[0]]['concern'] = sick_neighbors_count / graph.degree[v[0]]
+        for v in not_infected:
+            sick_neighbors_count = 0
+            for neighbor in graph[v]:
+                if neighbor in total_infected:
+                    sick_neighbors_count += 1
+            graph.nodes[v]['concern'] = sick_neighbors_count / graph.degree[v]
     # ------------------------------------------------------------------
     # print(len(total_infected))
     return total_infected
@@ -57,8 +52,8 @@ def ICM(graph: networkx.Graph, patients_0: List, iterations: int) -> [Set, Set]:
     S = [[] for i in range(iterations)]
     NI = [[] for i in range(iterations)]
 
-    for v in G.adj.items():
-        G.nodes[v[0]]['concern'] = 0
+    for v in graph.adj.items():
+        graph.nodes[v[0]]['concern'] = 0
         if v[0] in total_infected:
             NI[0].append(v[0])
         else:
@@ -67,11 +62,11 @@ def ICM(graph: networkx.Graph, patients_0: List, iterations: int) -> [Set, Set]:
     # Infection
     for i in range(1, iterations):
         died_now = set()
-        for v in S[i-1]:
-            for neighbor in G[v]:
+        for v in S[i - 1]:
+            for neighbor in graph[v]:
                 if neighbor in NI[i - 1]:
-                    P = min(1, CONTAGION * G.get_edge_data(v, neighbor, default=0)['w'] * (
-                            1 - G.nodes[v]['concern']))
+                    P = min(1, CONTAGION * graph.get_edge_data(v, neighbor, default=0)['w'] * (
+                            1 - graph.nodes[v]['concern']))
                     rand = np.random.random()
                     if rand < P:
                         rand = np.random.random()
@@ -87,12 +82,15 @@ def ICM(graph: networkx.Graph, patients_0: List, iterations: int) -> [Set, Set]:
         for v in S[i]:
             sick_neighbors_count = 0
             dead_neighbors_count = 0
-            for neighbor in G[v]:
+            for neighbor in graph[v]:
                 if neighbor in total_infected:
                     sick_neighbors_count += 1
                 elif neighbor in total_deceased:
                     dead_neighbors_count += 1
-            G.nodes[v]['concern'] = (3 * dead_neighbors_count + sick_neighbors_count) / (graph.degree[v])
+            if graph.degree[v] == 0:
+                graph.nodes[v]['concern'] = 0
+            else:
+                graph.nodes[v]['concern'] = (3 * dead_neighbors_count + sick_neighbors_count) / (graph.degree[v])
         # --------------------
     print("inectedAndAlive ", len(total_infected))
     print("died: ", len(total_deceased))
@@ -171,7 +169,20 @@ def plot_lethality_effect(mean_deaths: Dict, mean_infected: Dict):
 
 def choose_who_to_vaccinate(graph: networkx.Graph) -> List:
     people_to_vaccinate = []
-    # TODO implement your code here
+    T = networkx.algorithms.maximum_spanning_tree(graph)
+    l1 = choose_who_to_vaccinate_example(graph)
+    g2 = graph.subgraph(l1)
+    # l2= networkx.closeness_centrality(T)
+    # sorted_by_closness = sorted(l2.items(), key=lambda item: item[1], reverse=True)[:50]
+    # l3 = [i[0] for i in sorted_by_closness]
+    # g3 = graph.subgraph(l3)
+    contenders = networkx.betweenness_centrality_subset(g2, l1, l1, normalized=True)
+    sorted_nodes = sorted(contenders.items(), key=lambda item: item[1], reverse=True)[:50]
+    # print("stop")
+    people_to_vaccinate = [i[0] for i in sorted_nodes]
+    patientsRand = [x[0] for x in pd.read_csv('patients0.csv', header=None).values]
+    graph.remove_nodes_from([n for n in graph if n in set(people_to_vaccinate)])
+    ICM(graph, patientsRand, 6)
     return people_to_vaccinate
 
 
@@ -181,13 +192,13 @@ def choose_who_to_vaccinate_example(graph: networkx.Graph) -> List:
      that is, it returns the top 50 nodes in the graph with the highest degree.
     """
     node2degree = dict(graph.degree)
-    sorted_nodes = sorted(node2degree.items(), key=lambda item: item[1], reverse=True)[:50]
+    sorted_nodes = sorted(node2degree.items(), key=lambda item: item[1], reverse=True)[:53]
     people_to_vaccinate = [node[0] for node in sorted_nodes]
     return people_to_vaccinate
 
 
 "Global Hyper-parameters"
-CONTAGION = 1
+CONTAGION = 0.8
 LETHALITY = .15
 
 
@@ -204,22 +215,6 @@ def show_data(filename: str) -> networkx.Graph:
     clustering_coefficient(G)
 
 
-def LTM2(graph: networkx.Graph, patients_0: List, iterations: int) -> Set:
-    V, E, I = set(graph.nodes), {(e[0], e[1]): e[2]['w'] for e in graph.edges.data()}, [set(patients_0)]
-    E.update({(e[1], e[0]): e[2]['w'] for e in graph.edges.data()})
-    for t in range(1, iterations + 1):
-        I_add, S = set(), V.difference(I[t - 1])
-        for v in S:
-            v_neighbors = set(graph.neighbors(v))
-            v_infected_1, v_infected_2 = v_neighbors.intersection(I[t - 1]), v_neighbors.intersection(I[t - 2])
-            concern = (len(v_infected_2) / len(v_neighbors)) if t != 1 else 0
-            if (CONTAGION * sum({E[(v, u)] for u in v_infected_1})) >= (1 + concern):
-                I_add.add(v)
-        I.append(I[t - 1].union(I_add))
-
-    print("the len is ", len(I[-1]))
-    return I[-1]
-
 
 if __name__ == "__main__":
     # print("A1:")
@@ -231,5 +226,8 @@ if __name__ == "__main__":
     T = 6
     # LTM(G, patients_0, T)
     # LTM2(G, patients_0, T)
-    d1, d2 = compute_lethality_effect(G, T)
-    plot_lethality_effect(d1, d2)
+    # d1, d2 = compute_lethality_effect(G, T)
+    # print(d1)
+    # print(d2)
+    # plot_lethality_effect(d1, d2)
+    choose_who_to_vaccinate(G)
