@@ -169,20 +169,23 @@ def plot_lethality_effect(mean_deaths: Dict, mean_infected: Dict):
 
 def choose_who_to_vaccinate(graph: networkx.Graph) -> List:
     people_to_vaccinate = []
-    T = networkx.algorithms.maximum_spanning_tree(graph)
-    l1 = choose_who_to_vaccinate_example(graph)
+    # T = networkx.algorithms.maximum_spanning_tree(graph)
+    node2degree = dict(graph.degree)
+    sorted_nodes = sorted(node2degree.items(), key=lambda item: item[1], reverse=True)[:100]
+    l1 = [node[0] for node in sorted_nodes]
     g2 = graph.subgraph(l1)
-    # l2= networkx.closeness_centrality(T)
-    # sorted_by_closness = sorted(l2.items(), key=lambda item: item[1], reverse=True)[:50]
-    # l3 = [i[0] for i in sorted_by_closness]
-    # g3 = graph.subgraph(l3)
-    contenders = networkx.betweenness_centrality_subset(g2, l1, l1, normalized=True)
+    l2= networkx.closeness_centrality(g2)
+    sorted_by_closness = sorted(l2.items(), key=lambda item: item[1], reverse=True)[:70]
+    l3 = [i[0] for i in sorted_by_closness]
+    g3 = graph.subgraph(l3)
+    contenders = networkx.betweenness_centrality_subset(g3, l3, l3, normalized=True)
     sorted_nodes = sorted(contenders.items(), key=lambda item: item[1], reverse=True)[:50]
-    # print("stop")
     people_to_vaccinate = [i[0] for i in sorted_nodes]
-    patientsRand = [x[0] for x in pd.read_csv('patients0.csv', header=None).values]
+    patientsRand = []
     graph.remove_nodes_from([n for n in graph if n in set(people_to_vaccinate)])
-    ICM(graph, patientsRand, 6)
+    for i in range (50):
+        patientsRand.append(np.random.choice(graph.nodes()))
+    # ICM(graph, patientsRand, 6)
     return people_to_vaccinate
 
 
@@ -192,7 +195,7 @@ def choose_who_to_vaccinate_example(graph: networkx.Graph) -> List:
      that is, it returns the top 50 nodes in the graph with the highest degree.
     """
     node2degree = dict(graph.degree)
-    sorted_nodes = sorted(node2degree.items(), key=lambda item: item[1], reverse=True)[:53]
+    sorted_nodes = sorted(node2degree.items(), key=lambda item: item[1], reverse=True)[:100]
     people_to_vaccinate = [node[0] for node in sorted_nodes]
     return people_to_vaccinate
 
